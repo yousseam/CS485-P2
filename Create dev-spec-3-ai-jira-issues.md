@@ -100,7 +100,7 @@ classDiagram
 
     User --> Project
     Project --> Suggestion
-    TaskDraft --> SuggestionVersion
+    Suggestion --> SuggestionVersion
     Project --> Issue
 ```
 # 4. List of Classes
@@ -145,7 +145,7 @@ Issue
 
 # 5. State Diagrams
 
-## 5.1 Task Draft Lifecycle
+## 5.1 Suggestion Lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -175,22 +175,37 @@ stateDiagram-v2
 ```mermaid
 
 flowchart TD
-    A["Open Review Page"] --> B["Load Draft Tasks"]
-    B --> C["Display Draft List"]
-    C --> D["User Edits Draft"]
-    D --> E["Save Changes"]
-    E --> C
-    C --> F["Approve Draft"]
-    F --> G["Click Publish"]
-    G --> H{"Status = Approved?"}
-    H -->|Yes| I["Create Final Issues"]
-    H -->|No| J["Show Error"]
+    A["Load Review & Edit UI"] --> B["Fetch SuggestionBatch (DRAFT) from DB"]
+    B --> C["Display Draft Suggestions"]
+
+    C --> D["User Edits Suggestion Fields"]
+    D --> E["PATCH /api/suggestions/{id} (Optimistic Lock via version)"]
+    E -->|Version OK| F["Persist Changes + Create AuditEvent"]
+    E -->|Version Conflict| G["Return Conflict → Prompt Refresh/Retry"]
+
+    C --> H["User Sets Status: APPROVE / REJECT"]
+    H --> I["Persist Status Update + Create AuditEvent"]
+
+    C --> J["Validate Batch Before Publish"]
+    J --> K["POST /api/suggestion-batches/{id}/validate"]
+    K -->|Errors Found| L["Display Validation Errors in UI"]
+    K -->|Validation OK| M["Enable Publish Button"]
+
+    M --> N["POST /api/suggestion-batches/{id}/publish (idempotency_key)"]
+    N --> O["Create Issues for APPROVED Suggestions Only"]
+    O --> P["Create SuggestionToIssueLink + AuditEvent(PUBLISH)"]
+    P --> Q["Update Batch Status → PUBLISHED"]
+
+    C --> R["Discard Draft Batch"]
+    R --> S["POST /api/suggestion-batches/{id}/discard"]
+    S --> T["Update Batch Status → DISCARDED"]
 
 ```
 # 7. Development Risks and Failures
 
 Identified Risks
 - Publishing unreviewed tasks
+- Concurrent edits causing data conflicts
 - Losing edit history
 - Unauthorized user publishing
 - Inconsistent draft and issue data
@@ -198,10 +213,21 @@ Identified Risks
 
 Mitigation Strategies
 - Enforce approval before publish
+    - Only suggestions with status = APPROVED are eligible for publishing
+    - Server-side validation checks ensure unapproved or incomplete drafts cannot be converted into issues
 - Maintain version history table
+    - All edits create a SuggestionVersion record to preserve change history
+    - Optimistic locking via a version field prevents conflicitng updates from overwriting each other
 - Role-Based Access Control (RBAC)
+    - Only authorized roles (e.g., ProjectLead) can approve or publish drafts
+    - Publish permissions are stricter than edit permissions to maintain control
 - Transactional database writes
+    - Issue creation and SuggestionToIssueLink mapping occur within a single transaction
+    - If any step fails (e.g., Issue creation or Jira sync), the transaction rolls back to prevent inconsistent state.
 - Clear error feedback in UI
+    - Validation errors (missing required fields, invalid status) are displayed before publishing.
+    - Version conflicts trigger refresh prompts to prevent silent data loss.
+    - Partial failures during publish return structured error responses for user visibility.
 
 # 8. Technology Stack
 
@@ -230,7 +256,7 @@ Database
 AI Integration
 - Cloud LLM API
 - Structured JSON enforcement
-- Promppt versioning
+- Prompt versioning
 - Output validation + "fail closed" behavior
 
 Security / Infrastructure
