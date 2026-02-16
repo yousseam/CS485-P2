@@ -69,7 +69,7 @@ classDiagram
         UUID owner_id
     }
 
-    class TaskDraft {
+    class Suggestion {
         UUID id
         UUID project_id
         string title
@@ -80,7 +80,7 @@ classDiagram
         timestamp created_at
     }
 
-    class TaskDraftVersion {
+    class SuggestionVersion {
         UUID id
         UUID draft_id
         UUID edited_by
@@ -99,8 +99,8 @@ classDiagram
     }
 
     User --> Project
-    Project --> TaskDraft
-    TaskDraft --> TaskDraftVersion
+    Project --> Suggestion
+    TaskDraft --> SuggestionVersion
     Project --> Issue
 ```
 # 4. List of Classes
@@ -117,7 +117,7 @@ Project
 - description
 - owner_id
 
-TaskDraft
+Suggestion
 - id
 - project_id
 - title
@@ -127,7 +127,7 @@ TaskDraft
 - labels
 - created_at
 
-TaskDraftVersion
+SuggestionVersion
 - id
 - draft_id
 - edited_by
