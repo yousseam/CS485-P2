@@ -1,6 +1,16 @@
+# 1. Header
+
+**Version:** 1.0\
+**Date:** February, 2026\
+**Project Name:** AI-Enhanced Project Workflow Manager\
+**Document Status:** Draft
+
+**Related User Story:**\
+As a project lead, I want to review and edit AI-generated tasks before publishing them so that I stay in control of final decisions.
+
 ## 2. Architecture
 
-## 2.1 High-Level Architecture Diagram
+# 2.1 High-Level Architecture Diagram
 
 ```mermaid
 flowchart LR
@@ -19,7 +29,7 @@ flowchart LR
     Backend -->|Persist Issues| DB
     Backend -->|Optional Create in Jira| Jira[Jira REST API]
 ```
-## 2.2 Component Deployment
+# 2.2 Component Deployment
 
 - Component Execution Environment
 - Web Client Browser
@@ -28,7 +38,7 @@ flowchart LR
 - LLM Service External Cloud Provider (used in previous story)
 - Jira API External REST Service
 
-## 2.3 Information Flow
+# 2.3 Information Flow
 
 1) AI-generated draft tasks already exist in the database.
 2) User opens the review interface in the Web Client.
@@ -42,6 +52,7 @@ flowchart LR
 10) Optional: Backend creates Jira issues and stores returned issue keys.
 
 ## 3. Class Diagram
+``` mermaid
 
 classDiagram
     class User {
@@ -91,7 +102,7 @@ classDiagram
     Project --> TaskDraft
     TaskDraft --> TaskDraftVersion
     Project --> Issue
-    
+```
 ## 4. List of Classes
 
 User
@@ -134,7 +145,7 @@ Issue
 
 ## 5. State Diagrams
 
-## 5.1 Task Draft Lifecycle
+# 5.1 Task Draft Lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -149,7 +160,7 @@ stateDiagram-v2
 ```
 
 
-## 5.2 Issue Lifecycle
+# 5.2 Issue Lifecycle
 ```mermaid
 
 stateDiagram-v2
