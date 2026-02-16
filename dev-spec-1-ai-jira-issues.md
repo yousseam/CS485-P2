@@ -26,7 +26,7 @@ flowchart LR
     Client -->|POST /specifications| Backend[Backend API]
     Backend -->|Preprocess & Prompt| LLM[Cloud LLM API]
     LLM -->|Structured JSON Suggestions| Backend
-    Backend -->|Return Suggestions (In-Memory)| Client
+    Backend -->|Return Suggestions - In-Memory| Client
     Client -->|Approve Selected| Backend
     Backend -->|Persist Approved Issues Only| DB[(PostgreSQL)]
 ```
