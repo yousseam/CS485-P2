@@ -170,15 +170,15 @@ stateDiagram-v2
 
 ``` mermaid
 flowchart TD
-    A[Upload Spec] --> B[Validate]
-    B --> C[Preprocess]
-    C --> D[Construct Prompt]
-    D --> E[Call LLM API]
-    E --> F[Validate JSON]
-    F --> G[Return Suggestions to UI (Temporary)]
-    G --> H[User Review]
-    H -->|Approve| I[Create & Persist Issues]
-    H -->|Reject| J[Discard Suggestions]
+    A["Upload Spec"] --> B["Validate"]
+    B --> C["Preprocess"]
+    C --> D["Construct Prompt"]
+    D --> E["Call LLM API"]
+    E --> F["Validate JSON"]
+    F --> G["Return Suggestions to UI - temporary"]
+    G --> H["User Review"]
+    H -->|Approve| I["Create and Persist Issues"]
+    H -->|Reject| J["Discard Suggestions"]
 ```
 
 ------------------------------------------------------------------------
