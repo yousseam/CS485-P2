@@ -7,7 +7,7 @@
 # 1. Header
 
 **Version:** 1.0\
-**Date:** February 15, 2026\
+**Date:** February, 2026\
 **Project Name:** AI-Enhanced Project Workflow Manager\
 **Document Status:** Draft
 
