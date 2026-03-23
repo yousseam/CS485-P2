@@ -7,6 +7,7 @@ This guide explains how to configure and use AI-powered issue generation in the 
 The backend supports AI-powered issue generation using:
 - **OpenAI**: GPT-4o, GPT-4o-mini, GPT-4 Turbo
 - **Anthropic**: Claude 3 Sonnet, Claude 3 Opus
+- **Google Gemini**: Gemini 1.5 Pro, Gemini 1.5 Flash
 
 When AI is configured, the system will intelligently analyze your specification text and generate relevant Jira issues with proper epics, stories, descriptions, and acceptance criteria.
 
@@ -28,6 +29,10 @@ When AI is configured, the system will intelligently analyze your specification 
    # For Anthropic (Claude)
    ANTHROPIC_API_KEY=your-anthropic-api-key-here
    ANTHROPIC_MODEL=claude-3-sonnet-20250219  # Optional, defaults to Claude 3 Sonnet
+
+   # Google Gemini
+   GEMINI_API_KEY=your-gemini-api-key-here
+   GEMINI_MODEL=gemini-1.5-pro
    ```
 
 3. Restart the backend:
@@ -40,6 +45,7 @@ When AI is configured, the system will intelligently analyze your specification 
 By default, the system automatically selects the best available provider (`AI_PROVIDER=auto`):
 - Prefers OpenAI if both keys are configured
 - Falls back to Anthropic if only Anthropic key is configured
+- Falls back to Google Gemini if only Google Gemini key is configured
 - Uses mock issues if neither key is configured
 
 To force a specific provider:
@@ -50,6 +56,9 @@ AI_PROVIDER=openai
 
 # Force Anthropic
 AI_PROVIDER=anthropic
+
+# Force Google Gemini
+AI_PROVIDER=gemini
 ```
 
 ### Model Selection
@@ -64,6 +73,10 @@ Available models:
 **Anthropic:**
 - `claude-3-sonnet-20250219` - Balanced performance and speed (default)
 - `claude-3-opus-20250219` - Highest quality, slower
+
+**Google Gemini:**
+- `gemini-1.5-pro` (default)
+- `gemini-1.5-flash` (faster + cheaper)
 
 ## Getting API Keys
 
@@ -84,6 +97,15 @@ Available models:
 4. Click "Create Key"
 5. Copy the key (starts with `sk-ant-`)
 6. Add to your `.env` file as `ANTHROPIC_API_KEY`
+
+### Google Gemini API Key
+
+1. Go to [Google Gemini](https://aistudio.google.com/)
+2. sign in or create an accound
+3. Navigate to API Keys section
+4. Click "Create API Key"
+5. Copy the key (starts with `AI`)
+6. Add to your `.env` file as `GEMINI_API_KEY`
 
 ## Usage
 
