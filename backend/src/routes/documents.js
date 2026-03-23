@@ -29,7 +29,7 @@ const router = express.Router();
  *   raw_text: string (required) - Extracted text content
  *   options?: {
  *     useAI?: 'auto' | 'true' | 'false'
- *     aiProvider?: 'openai' | 'anthropic' | 'auto'
+ *     aiProvider?: 'openai' | 'anthropic' | 'gemini' | 'auto'
  *   }
  * }
  *

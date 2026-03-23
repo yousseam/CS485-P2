@@ -8,6 +8,7 @@ import * as mockApi from './mockApi.js';
 // API base URL - can be overridden via environment variable
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+const DISABLE_MOCK_FALLBACK = import.meta.env.VITE_DISABLE_MOCK_FALLBACK === 'true';
 
 /**
  * Make an HTTP request to the backend API
@@ -29,8 +30,11 @@ async function apiRequest(endpoint, options = {}) {
   const response = await fetch(url, config);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.code || 'API_ERROR');
+    const body = await response.json().catch(() => ({}));
+    const msg = body.message || body.error || body.code || 'API_ERROR';
+    const err = new Error(msg);
+    err.code = body.code;
+    throw err;
   }
 
   return response.json();
@@ -58,7 +62,8 @@ export async function generateIssues(specText, options = {}) {
     return data;
   } catch (error) {
     console.error('[apiClient] Error calling backend API:', error);
-    // Fallback to mock API if backend is unavailable
+    if (DISABLE_MOCK_FALLBACK) throw error;
+    // Fallback to mock API if backend is unavailable (legacy behavior)
     console.log('[apiClient] Falling back to mock API');
     return mockApi.generateIssues(specText, options);
   }
@@ -86,7 +91,8 @@ export async function publishIssues(issues, options = {}) {
     return data;
   } catch (error) {
     console.error('[apiClient] Error calling backend API:', error);
-    // Fallback to mock API if backend is unavailable
+    if (DISABLE_MOCK_FALLBACK) throw error;
+    // Fallback to mock API if backend is unavailable (legacy behavior)
     console.log('[apiClient] Falling back to mock API');
     return mockApi.publishIssues(issues, options);
   }

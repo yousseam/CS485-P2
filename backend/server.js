@@ -39,9 +39,25 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS configuration - allow frontend origin
+// CORS: allow typical dev origins (localhost vs host.docker.internal both resolve to the same Vite app)
+function getCorsAllowedOrigins() {
+  const fromEnv = process.env.FRONTEND_URL;
+  const parsed = fromEnv
+    ? fromEnv.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['http://localhost:5173'];
+  if (NODE_ENV === 'development') {
+    const devDefaults = [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://host.docker.internal:5173',
+    ];
+    return [...new Set([...parsed, ...devDefaults])];
+  }
+  return parsed;
+}
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: getCorsAllowedOrigins(),
   credentials: true
 }));
 

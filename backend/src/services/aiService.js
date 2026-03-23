@@ -1,6 +1,6 @@
 /**
  * AI Integration Service
- * Provides unified interface for OpenAI and Anthropic APIs
+ * Provides unified interface for OpenAI, Anthropic, and Google Gemini APIs
  * Generates Jira issues from specification text using AI
  */
 
@@ -105,7 +105,7 @@ function getBackoffDelay(attempt, config) {
  * @returns {Object} Parsed and validated issues object
  * @throws {Error} If response is invalid or cannot be parsed
  */
-function parseAIResponse(response) {
+export function parseAIResponse(response) {
   let parsed;
 
   try {
@@ -292,6 +292,112 @@ async function callOpenAI(specText, options = {}) {
 }
 
 /**
+ * Call Google Gemini API to generate issues
+ *
+ * @param {string} specText - Specification text
+ * @param {Object} options - Options for API call
+ * @returns {Promise<Object>} Generated issues
+ */
+async function callGemini(specText, options = {}) {
+  const { apiKey, model = 'gemini-flash-latest' } = options;
+
+  if (!apiKey) {
+    throw new ApiError(
+      'Gemini API key is not configured. Please set GEMINI_API_KEY environment variable.',
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
+  }
+
+  const prompt = getUserPrompt(specText);
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: `${SYSTEM_PROMPT}\n\n${prompt}`
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 8192
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const msg = body.error?.message || body.message || response.statusText;
+
+    if (response.status === 429) {
+      throw new ApiError(
+        'Gemini rate limit exceeded. Please try again later.',
+        ErrorCodes.AI_PROC_ERR_429,
+        429
+      );
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new ApiError(
+        'Gemini API key is invalid or lacks permissions. Please check your configuration.',
+        ErrorCodes.AI_PROC_ERR_500,
+        500
+      );
+    }
+
+    throw new ApiError(
+      `Gemini API error: ${msg}`,
+      ErrorCodes.AI_PROC_ERR_500,
+      response.status >= 400 ? response.status : 500
+    );
+  }
+
+  const data = await response.json();
+  const blockReason = data.promptFeedback?.blockReason;
+  if (blockReason && blockReason !== 'BLOCK_REASON_UNSPECIFIED') {
+    throw new ApiError(
+      `Gemini blocked the request (${blockReason}). Try shorter or different spec text.`,
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
+  }
+
+  const candidate = data.candidates?.[0];
+  if (!candidate) {
+    throw new ApiError(
+      'Gemini returned no candidates. Check API key, model name (GEMINI_MODEL), and quota.',
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
+  }
+
+  const parts = candidate.content?.parts || [];
+  let content = parts[0]?.text;
+  if (!content && parts.length > 0) {
+    content = parts.map((p) => p.text).filter(Boolean).join('\n');
+  }
+
+  if (!content) {
+    const reason = candidate.finishReason || 'unknown';
+    throw new ApiError(
+      `Gemini returned empty text (finishReason: ${reason}).`,
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
+  }
+
+  return parseAIResponse(content);
+}
+
+/**
  * Call Anthropic API to generate issues
  *
  * @param {string} specText - Specification text
@@ -375,7 +481,7 @@ async function callAnthropic(specText, options = {}) {
 
 /**
  * Generate issues using AI
- * Automatically selects to best available AI provider
+ * Automatically selects the best available AI provider (auto: Gemini, then OpenAI, then Anthropic)
  *
  * @param {string} specText - Specification text to analyze
  * @param {Object} options - Generation options
@@ -383,11 +489,13 @@ async function callAnthropic(specText, options = {}) {
  */
 export async function generateIssuesWithAI(specText, options = {}) {
   const {
-    provider = 'auto', // 'auto', 'openai', 'anthropic'
+    provider = 'auto', // 'auto', 'openai', 'anthropic', 'gemini'
     openaiKey,
     anthropicKey,
+    geminiKey,
     openaiModel = 'gpt-4o',
     anthropicModel = 'claude-3-sonnet-20250219',
+    geminiModel = 'gemini-flash-latest',
     maxRetries = RETRY_CONFIG.maxRetries,
     disableRetry = false
   } = options;
@@ -395,20 +503,42 @@ export async function generateIssuesWithAI(specText, options = {}) {
   // Determine which provider to use
   let selectedProvider = provider;
   if (provider === 'auto') {
-    if (openaiKey && anthropicKey) {
-      // Prefer OpenAI if both are available
-      selectedProvider = 'openai';
+    // Prefer Gemini first, then OpenAI, then Anthropic
+    if (geminiKey) {
+      selectedProvider = 'gemini';
     } else if (openaiKey) {
       selectedProvider = 'openai';
     } else if (anthropicKey) {
       selectedProvider = 'anthropic';
     } else {
       throw new ApiError(
-        'No AI provider is configured. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable.',
+        'No AI provider is configured. Please set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY environment variable.',
         ErrorCodes.AI_PROC_ERR_500,
         500
       );
     }
+  }
+
+  if (selectedProvider === 'openai' && !openaiKey) {
+    throw new ApiError(
+      'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.',
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
+  }
+  if (selectedProvider === 'anthropic' && !anthropicKey) {
+    throw new ApiError(
+      'Anthropic API key is not configured. Please set ANTHROPIC_API_KEY environment variable.',
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
+  }
+  if (selectedProvider === 'gemini' && !geminiKey) {
+    throw new ApiError(
+      'Gemini API key is not configured. Please set GEMINI_API_KEY environment variable.',
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
   }
 
   // Call to appropriate provider with retry logic
@@ -429,7 +559,9 @@ export async function generateIssuesWithAI(specText, options = {}) {
             attempts: attempt
           }
         };
-      } else if (selectedProvider === 'anthropic') {
+      }
+
+      if (selectedProvider === 'anthropic') {
         const result = await callAnthropic(specText, {
           apiKey: anthropicKey,
           model: anthropicModel
@@ -444,6 +576,28 @@ export async function generateIssuesWithAI(specText, options = {}) {
           }
         };
       }
+
+      if (selectedProvider === 'gemini') {
+        const result = await callGemini(specText, {
+          apiKey: geminiKey,
+          model: geminiModel
+        });
+
+        return {
+          ...result,
+          metadata: {
+            provider: 'gemini',
+            model: geminiModel,
+            attempts: attempt
+          }
+        };
+      }
+
+      throw new ApiError(
+        `Unknown AI provider: ${selectedProvider}. Use 'auto', 'openai', 'anthropic', or 'gemini'.`,
+        ErrorCodes.AI_PROC_ERR_500,
+        500
+      );
     } catch (error) {
       lastError = error;
 
@@ -476,10 +630,10 @@ export async function generateIssuesWithAI(specText, options = {}) {
  * @returns {boolean} Whether AI is available
  */
 export function isAIAvailable(options = {}) {
-  const { openaiKey, anthropicKey, provider = 'auto' } = options;
+  const { openaiKey, anthropicKey, geminiKey, provider = 'auto' } = options;
 
   if (provider === 'auto') {
-    return !!(openaiKey || anthropicKey);
+    return !!(openaiKey || anthropicKey || geminiKey);
   }
 
   if (provider === 'openai') {
@@ -488,6 +642,10 @@ export function isAIAvailable(options = {}) {
 
   if (provider === 'anthropic') {
     return !!anthropicKey;
+  }
+
+  if (provider === 'gemini') {
+    return !!geminiKey;
   }
 
   return false;

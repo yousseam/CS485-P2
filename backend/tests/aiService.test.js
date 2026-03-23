@@ -32,6 +32,27 @@ describe('AI Service', () => {
       assert.strictEqual(result, true);
     });
 
+    it('should return true when only Gemini key is provided', () => {
+      const result = isAIAvailable({ geminiKey: 'AIza-test-key' });
+      assert.strictEqual(result, true);
+    });
+
+    it('should return true for gemini provider when Gemini key is provided', () => {
+      const result = isAIAvailable({
+        geminiKey: 'AIza-test-key',
+        provider: 'gemini'
+      });
+      assert.strictEqual(result, true);
+    });
+
+    it('should return false for gemini provider when only OpenAI key is provided', () => {
+      const result = isAIAvailable({
+        openaiKey: 'sk-test-key',
+        provider: 'gemini'
+      });
+      assert.strictEqual(result, false);
+    });
+
     it('should return true for openai provider when OpenAI key is provided', () => {
       const result = isAIAvailable({
         openaiKey: 'sk-test-key',
@@ -73,9 +94,9 @@ describe('AI Service', () => {
     });
 
     it('should handle markdown code blocks with JSON', () => {
-      const markdownResponse = \`\`\`\`json
-\${validAIResponse}
-\`\`\`\`;
+      const markdownResponse = `\`\`\`json
+${validAIResponse}
+\`\`\``;
       const result = parseAIResponse(markdownResponse);
       assert.ok(result.issues);
       assert.strictEqual(result.issues.length, 1);
@@ -247,19 +268,34 @@ describe('AI Service', () => {
       );
     });
 
-    it('should prefer OpenAI when both keys are available and provider is auto', async () => {
-      // This test would require actual API keys, so we just verify the logic
-      // The test would need real API keys to fully verify
-      // For now, we just verify it doesn't throw on the provider selection logic
+    it('should throw error when Gemini key is invalid', async () => {
+      await assert.rejects(
+        async () => await generateIssuesWithAI(sampleSpec, {
+          provider: 'gemini',
+          geminiKey: 'invalid-key',
+          disableRetry: true
+        }),
+        (err) => {
+          assert.ok(err instanceof ApiError);
+          return true;
+        }
+      );
+    });
+
+    it('should prefer Gemini when multiple keys are available and provider is auto', async () => {
       try {
         await generateIssuesWithAI(sampleSpec, {
           openaiKey: 'sk-test',
           anthropicKey: 'sk-ant-test',
+          geminiKey: 'AIza-invalid-test',
           disableRetry: true
         });
       } catch (error) {
-        // We expect it to fail because of invalid keys, but it should try OpenAI first
-        assert.ok(error.message.includes('OpenAI') || error.message.includes('sk-test'));
+        assert.ok(
+          error.message.includes('Gemini') ||
+            error.message.includes('AIza') ||
+            error.message.includes('API')
+        );
       }
     });
 

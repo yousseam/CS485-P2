@@ -47,9 +47,11 @@ router.post('/', asyncHandler(async (req, res) => {
   // Generate issues
   const result = await generateIssues(specText, requestOptions);
 
-  // Return success response
+  // Return success response (usedAI lets clients distinguish real AI vs mock)
   res.status(200).json({
     issues: result.issues,
+    usedAI: result.usedAI,
+    analysis: result.analysis,
     requestId: req.id,
     timestamp: new Date().toISOString()
   });

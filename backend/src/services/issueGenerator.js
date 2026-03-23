@@ -6,6 +6,7 @@
 
 import { ApiError, ErrorCodes } from '../middleware/errorHandler.js';
 import { generateIssuesWithAI, isAIAvailable } from './aiService.js';
+import { effectiveApiKey } from '../utils/envKeys.js';
 
 /**
  * Mock issues data for fallback when AI is not configured
@@ -173,12 +174,25 @@ export async function generateIssues(specText, options = {}) {
     forceError = false,
     disableRandomErrors = false,
     useAI = 'auto', // 'auto', 'true', 'false'
-    aiProvider = 'auto',
+    disableMock = false,
     openaiKey,
     anthropicKey,
+    geminiKey,
     openaiModel,
-    anthropicModel
+    anthropicModel,
+    geminiModel
   } = options;
+
+  const aiProvider = options.aiProvider ?? process.env.AI_PROVIDER ?? 'auto';
+  const envDisableMock = process.env.AI_DISABLE_MOCK;
+  const disableMockEffective =
+    disableMock ||
+    (typeof envDisableMock === 'string' &&
+      envDisableMock.trim().replace(/^['"]|['"]$/g, '').toLowerCase() === 'true');
+
+  const resolvedOpenaiKey = effectiveApiKey(openaiKey) ?? effectiveApiKey(process.env.OPENAI_API_KEY);
+  const resolvedAnthropicKey = effectiveApiKey(anthropicKey) ?? effectiveApiKey(process.env.ANTHROPIC_API_KEY);
+  const resolvedGeminiKey = effectiveApiKey(geminiKey) ?? effectiveApiKey(process.env.GEMINI_API_KEY);
 
   // Validate input
   const validatedSpec = validateSpec(specText);
@@ -188,8 +202,9 @@ export async function generateIssues(specText, options = {}) {
   if (useAI === 'auto') {
     // Check if AI is available
     const aiAvailable = isAIAvailable({
-      openaiKey: openaiKey || process.env.OPENAI_API_KEY,
-      anthropicKey: anthropicKey || process.env.ANTHROPIC_API_KEY,
+      openaiKey: resolvedOpenaiKey,
+      anthropicKey: resolvedAnthropicKey,
+      geminiKey: resolvedGeminiKey,
       provider: aiProvider
     });
     shouldUseAI = aiAvailable;
@@ -211,10 +226,12 @@ export async function generateIssues(specText, options = {}) {
 
       const aiResult = await generateIssuesWithAI(validatedSpec, {
         provider: aiProvider,
-        openaiKey: openaiKey || process.env.OPENAI_API_KEY,
-        anthropicKey: anthropicKey || process.env.ANTHROPIC_API_KEY,
+        openaiKey: resolvedOpenaiKey,
+        anthropicKey: resolvedAnthropicKey,
+        geminiKey: resolvedGeminiKey,
         openaiModel: openaiModel || process.env.OPENAI_MODEL,
         anthropicModel: anthropicModel || process.env.ANTHROPIC_MODEL,
+        geminiModel: geminiModel || process.env.GEMINI_MODEL,
         disableRetry: disableRandomErrors
       });
 
@@ -236,15 +253,28 @@ export async function generateIssues(specText, options = {}) {
         aiMetadata: aiResult.metadata
       };
     } catch (error) {
-      // Log the error but fall back to mock
-      console.warn('[IssueGenerator] AI generation failed, falling back to mock:', error.message);
-      
-      // Continue to mock generation below
+      console.warn('[IssueGenerator] AI generation failed:', error?.message || error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        error?.message || 'AI generation failed',
+        ErrorCodes.AI_PROC_ERR_500,
+        500
+      );
     }
   }
 
-  // Fall back to mock issues
-  console.log('[IssueGenerator] Using mock issue generation');
+  // No AI configured — mock only when we never attempted a provider
+  if (disableMockEffective) {
+    throw new ApiError(
+      'AI generation is disabled (no valid API keys available or useAI=false). Set AI_DISABLE_MOCK=false to fall back to mock issues for UI testing.',
+      ErrorCodes.AI_PROC_ERR_500,
+      500
+    );
+  }
+
+  console.log('[IssueGenerator] Using mock issue generation (no API keys or useAI=false)');
   return generateMockIssues(validatedSpec);
 }
 
