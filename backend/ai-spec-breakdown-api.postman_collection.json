@@ -1,0 +1,288 @@
+{
+  "info": {
+    "name": "AI Specification Breakdown API",
+    "description": "API for generating Jira issues from specifications with optional AI integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health"
+        },
+        "description": "Check if API is healthy"
+      }
+    },
+    {
+      "name": "2. Generate Issues (Mock - No AI Key)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/generate-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"specText\": \"# User Authentication System\\n\\n## Overview\\nImplement a comprehensive user authentication system with multi-factor authentication, session management, and role-based access control.\\n\\n## Core Requirements\\n\\n### 1. User Registration\\n- Support email/password registration\\n- Implement email verification flow\\n- Validate password strength\\n- Store hashed passwords using bcrypt\\n\\n### 2. Login System\\n- Email/password authentication\\n- Optional \\\"Remember Me\\\" functionality\\n- Account lockout after 5 failed attempts\\n- Password reset via email\\n\\n## Success Criteria\\n- All authentication flows are secure and tested\\n- API response time < 200ms\",\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Generate issues using mock data (works without AI key)"
+      },
+    {
+      "name": "3. Generate Issues (Force AI Error - Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/generate-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"specText\": \"Test specification\",\n  \"options\": {\"forceError\": true, \"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Demonstrate error handling (will return AI_PROC_ERR_429)"
+      },
+    {
+      "name": "4. Generate Issues (Empty Spec - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/generate-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"specText\": \"\",\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (will return INVALID_SPEC error)"
+      },
+    {
+      "name": "5. Generate Issues (Short Spec - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/generate-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"specText\": \"abc\",\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (will return INVALID_SPEC error - too short)"
+      },
+    {
+      "name": "6. Generate Issues (Large Spec - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/generate-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"specText\": \"" + \"A\".repeat(500001) + "\",\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (will return INVALID_SPEC error - too large, >500KB)"
+      },
+    {
+      "name": "7. Publish Issues (Mock - Success)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issues\": [\n    {\n      \"id\": \"story-1\",\n      \"key\": \"STORY-1\",\n      \"type\": \"story\",\n      \"summary\": \"Test Story for Demo\",\n      \"description\": \"This is a test issue for Postman demo\",\n      \"size\": \"M\",\n      \"acceptanceCriteria\": [\"Criterion 1\", \"Criterion 2\"]\n    }\n  ],\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Publish issues successfully (mock Jira)"
+      },
+    {
+      "name": "8. Publish Issues (No Issues - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issues\": [],\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (will return INVALID_ISSUES error)"
+      },
+    {
+      "name": "9. Publish Issues (Invalid Issue - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issues\": [\n    {\n      \"key\": \"STORY-1\",\n      \"type\": \"story\",\n      \"summary\": \"Test\"\n    }\n  ],\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (missing id field - will return INVALID_ISSUES error)"
+      },
+    {
+      "name": "10. Publish Issues (Invalid Summary - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issues\": [\n    {\n      \"id\": \"story-1\",\n      \"key\": \"STORY-1\",\n      \"type\": \"story\",\n      \"description\": \"Test\"\n    }\n  ],\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (missing summary field - will return INVALID_ISSUES error)"
+      },
+    {
+      "name": "11. Publish Issues (No Description - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issues\": [\n    {\n      \"id\": \"story-1\",\n      \"key\": \"STORY-1\",\n      \"type\": \"story\",\n      \"summary\": \"Test\"\n      \"acceptanceCriteria\": [\"Criterion 1\"]\n    }\n  ],\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (missing description field - will return INVALID_ISSUES error)"
+      },
+    {
+      "name": "12. Publish Issues (Invalid Array Type - Error Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issues\": \"not an array\",\n  \"options\": {\"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Test validation (issues is not an array - will return INVALID_ISSUES error)"
+      },
+    {
+      "name": "13. Publish Issues (Force Publish Error - Demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"issues\": [\n    {\n      \"id\": \"story-1\",\n      \"key\": \"STORY-1\",\n      \"type\": \"story\",\n      \"summary\": \"Test\",\n      \"description\": \"Test description\",\n      \"acceptanceCriteria\": [\"Criterion 1\"]\n    }\n  ],\n  \"options\": {\"forceError\": true, \"disableRandomErrors\": true}\n}\n"
+        },
+        "description": "Demonstrate publish error handling (will return PUBLISH_ERR)"
+      },
+    {
+      "name": "14. Get Project Info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues/project-info"
+        },
+        "description": "Get information about the configured Jira project"
+      }
+    },
+    {
+      "name": "15. Generate Issues Service Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/generate-issues/health"
+        },
+        "description": "Check health of the issue generation service"
+      }
+    },
+    {
+      "name": "16. Publish Issues Service Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/publish-issues/health"
+        },
+        "description": "Check health of the publish issues service"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    }
+  ]
+}
