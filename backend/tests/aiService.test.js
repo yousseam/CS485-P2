@@ -371,3 +371,16 @@ ${validAIResponse}
     });
   });
 });
+describe("parseAIResponse - invalid JSON", () => {
+  it("should throw error when JSON is completely invalid", () => {
+    const badInput = "THIS IS NOT JSON";
+
+    assert.throws(
+      () => parseAIResponse(badInput),
+      (err) => {
+        assert.ok(err instanceof ApiError);
+        return true;
+      }
+    );
+  });
+});
