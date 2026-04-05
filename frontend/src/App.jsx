@@ -1,5 +1,14 @@
 import { useState, useCallback, useEffect } from 'react'
 import { generateIssues, publishIssues, readSpecFromFile } from './api/apiClient'
+import {
+  toggleApproval,
+  toggleApproveAll,
+  emptyApprovals,
+  canPublish,
+  selectApprovedIssues,
+  applyIssueUpdate,
+  approvedIdsFromSerialized,
+} from './issueReview/issueReview.js'
 import './App.css'
 
 const STORAGE_KEY = 'ai-spec-breakdown'
@@ -46,8 +55,9 @@ function App() {
     try {
       const result = await generateIssues(text, { forceError: useErrorPath })
       setTasks(result.issues.map((t) => ({ ...t, approved: false })))
-      setApprovedIds(new Set())
-      setApprovedCount(0)
+      const cleared = emptyApprovals()
+      setApprovedIds(cleared.nextApprovedIds)
+      setApprovedCount(cleared.approvedCount)
       setPhase('tasks')
     } catch (e) {
       setError({
@@ -81,27 +91,14 @@ function App() {
 
   const handleApprove = useCallback((id) => {
     setApprovedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      setApprovedCount(next.size)
-      return next
+      const { nextApprovedIds, approvedCount } = toggleApproval(prev, id)
+      setApprovedCount(approvedCount)
+      return nextApprovedIds
     })
   }, [])
 
   const handleUpdateTask = useCallback((id, updates) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              summary: updates.summary ?? t.summary,
-              description: updates.description ?? t.description,
-              acceptanceCriteria: Array.isArray(updates.acceptanceCriteria) ? updates.acceptanceCriteria : t.acceptanceCriteria,
-            }
-          : t
-      )
-    )
+    setTasks((prev) => applyIssueUpdate(prev, id, updates))
     setEditingId(null)
     setEditingDraft(null)
   }, [])
@@ -125,11 +122,11 @@ function App() {
   }, [])
 
   const handlePublish = useCallback(async () => {
-    if (approvedIds.size < tasks.length) return
+    if (!canPublish(approvedIds, tasks.length)) return
     setPublishError(null)
     setPhase('publishing')
     try {
-      const published = tasks.filter((t) => approvedIds.has(t.id))
+      const published = selectApprovedIssues(tasks, approvedIds)
       const { publishedCount: count, projectKey } = await publishIssues(published, { forceError: false })
       setPublishCount(count)
       setPublishedProjectKey(projectKey)
@@ -153,9 +150,9 @@ function App() {
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
         setTasks(data.tasks)
         if (Array.isArray(data.approvedIds)) {
-          const set = new Set(data.approvedIds)
-          setApprovedIds(set)
-          setApprovedCount(set.size)
+          const next = approvedIdsFromSerialized(data.approvedIds)
+          setApprovedIds(next)
+          setApprovedCount(next.size)
         }
         setPhase('tasks')
       }
@@ -190,8 +187,9 @@ function App() {
     setTasks([])
     setError(null)
     setPublishError(null)
-    setApprovedIds(new Set())
-    setApprovedCount(0)
+    const cleared = emptyApprovals()
+    setApprovedIds(cleared.nextApprovedIds)
+    setApprovedCount(cleared.approvedCount)
     setPublishCount(null)
     setEditingId(null)
     try {
@@ -449,14 +447,9 @@ function App() {
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => {
-                    const allApproved = approvedIds.size === tasks.length
-                    if (allApproved) {
-                      setApprovedIds(new Set())
-                      setApprovedCount(0)
-                    } else {
-                      setApprovedIds(new Set(tasks.map((t) => t.id)))
-                      setApprovedCount(tasks.length)
-                    }
+                    const { nextApprovedIds, approvedCount } = toggleApproveAll(approvedIds, tasks)
+                    setApprovedIds(nextApprovedIds)
+                    setApprovedCount(approvedCount)
                   }}
                   aria-label={approvedIds.size === tasks.length ? 'Unapprove all issues' : 'Approve all issues'}
                 >
@@ -466,7 +459,7 @@ function App() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={approvedIds.size < tasks.length}
+                  disabled={!canPublish(approvedIds, tasks.length)}
                   onClick={handlePublish}
                   aria-label="Publish approved issues to Jira"
                 >
