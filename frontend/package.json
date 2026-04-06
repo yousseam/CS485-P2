@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "jest",
+    "test:frontend-us1": "vitest run tests/apiClient.test.js",
+    "test:coverage-us1": "vitest run tests/apiClient.test.js --coverage"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -18,10 +21,14 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "vite": "^7.3.1"
+    "jest": "^30.3.0",
+    "jsdom": "^29.0.1",
+    "vite": "^7.3.1",
+    "vitest": "^4.1.2"
   }
 }
