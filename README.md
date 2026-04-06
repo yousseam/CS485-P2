@@ -142,10 +142,21 @@ See `backend/README.md` for detailed API documentation including:
 
 ### Backend Tests
 
+The backend uses **Jest** for unit testing (in addition to the default Node test runner)
+
 ```bash
 cd backend
+npm install
+
+# Run original Node tests
 npm test                # Run all tests
 npm run test:watch       # Watch mode
+
+# Run Jest unit tests (SuggestionBatch - User Story 1)
+npm run test:jest
+
+# Run Jest tests with coverage
+npm run test:coverage
 ```
 
 ### Frontend Tests
