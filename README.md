@@ -299,3 +299,7 @@ This is a CS485 course project.
 ## 👥 Contributors
 
 CS485 Project 2 Team
+
+## Deployment Notes
+
+Current deployment uses Docker for startup, but does not yet include CI/CD, staging environments, or automated deployment checks.
