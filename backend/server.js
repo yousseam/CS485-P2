@@ -17,6 +17,7 @@ import { authRouter } from './src/routes/auth.js';
 import { projectsRouter } from './src/routes/projects.js';
 import { documentsRouter } from './src/routes/documents.js';
 import { tasksRouter } from './src/routes/tasks.js';
+import { calculatorRouter } from './src/routes/calculator.js';
 
 // Import middleware
 import { errorHandler } from './src/middleware/errorHandler.js';
@@ -85,6 +86,7 @@ app.use('/api/documents', documentsRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/generate-issues', generateIssuesRouter);
 app.use('/api/publish-issues', publishIssuesRouter);
+app.use('/api/calculator', calculatorRouter);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -141,8 +143,9 @@ async function startServer() {
   });
 }
 
-startServer();
-
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  startServer();
+}
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');
@@ -155,3 +158,4 @@ process.on('SIGINT', async () => {
   await closePool();
   process.exit(0);
 });
+export { app };

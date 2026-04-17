@@ -1,110 +1,75 @@
-/* AI Specification Breakdown – high fidelity to Figma mockups */
-
-.app {
-  min-height: 100vh;
-  background: #f5f5f5;
-  color: #213547;
-  overflow-x: hidden; /* avoid horizontal scrolling */
-}
-
-.app-header {
-  background: #fff;
-  padding: 1rem 1rem 0.75rem;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-@media (min-width: 1024px) {
-  .app-header {
-    padding: 1.25rem 1.5rem 1rem;
-  }
-}
-
-.app-header-top {
-  margin-bottom: 1rem;
-}
-
-.app-title {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.app-subtitle {
-  margin: 0;
-  font-size: 0.9375rem;
-  color: #64748b;
-}
-
-.stepper {
+.calculator {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.stepper-step {
-  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 6px;
-  background: #e2e8f0;
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 600;
+  min-height: 100vh;
+  background-color: #f0f0f0;
+  font-family: Arial, sans-serif;
 }
 
-.stepper-step--active {
-  background: #2563eb;
-  color: #fff;
+.display {
+  width: 300px;
+  height: 60px;
+  background-color: #fff;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px;
+  margin-bottom: 20px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  overflow: hidden;
 }
 
-.stepper-step--done {
-  background: #dcfce7;
-  color: #166534;
-}
-
-/* Responsive: stacked by default (mobile-first); two columns from 1024px */
-.app-main {
+.buttons {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  padding: 1rem;
-  max-width: 1400px;
-  margin: 0 auto;
-  min-width: 0; /* prevent grid overflow */
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 300px;
 }
 
-@media (min-width: 1024px) {
-  .app-main {
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    padding: 1.5rem;
-  }
+button {
+  height: 60px;
+  font-size: 18px;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-/* Mobile <= 480px: tighter layout, touch-friendly buttons, no horizontal scroll */
-@media (max-width: 480px) {
-  .app-header {
-    padding: 0.75rem 0.75rem 0.5rem;
-  }
+button:hover {
+  opacity: 0.8;
+}
 
-  .app-title {
-    font-size: 1.35rem;
-  }
+button:nth-child(-n+16) {
+  background-color: #e0e0e0;
+  color: #333;
+}
 
-  .app-subtitle {
-    font-size: 0.875rem;
-  }
+button:nth-child(17) {
+  background-color: #ff6b6b;
+  color: white;
+}
 
-  .app-main {
-    padding: 0.75rem;
-    gap: 0.75rem;
-  }
+button:nth-child(18) {
+  background-color: #4ecdc4;
+  color: white;
+}
 
-  .panel {
+button:nth-child(19) {
+  background-color: #ff6b6b;
+  color: white;
+}
+
+button:nth-child(20) {
+  background-color: #ffa726;
+  color: white;
+}
     padding: 1rem;
     min-height: 240px;
   }

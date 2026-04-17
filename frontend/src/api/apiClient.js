@@ -98,4 +98,23 @@ export async function publishIssues(issues, options = {}) {
   }
 }
 
+/**
+ * Calculate the result of a mathematical expression.
+ * @param {string} expression - Mathematical expression as string
+ * @returns {Promise<{ result: number }>}
+ */
+export async function calculate(expression) {
+  console.log('[apiClient] Calling backend API for calculate');
+  try {
+    const data = await apiRequest('/calculator/calculate', {
+      method: 'POST',
+      body: JSON.stringify({ expression }),
+    });
+    return data;
+  } catch (error) {
+    console.error('[apiClient] Error calling backend API:', error);
+    throw error;
+  }
+}
+
 export { readSpecFromFile } from './mockApi.js';

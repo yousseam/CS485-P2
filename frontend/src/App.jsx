@@ -1,383 +1,88 @@
-import { useState, useCallback, useEffect } from 'react'
-import { generateIssues, publishIssues, readSpecFromFile } from './api/apiClient'
-import './App.css'
-
-const STORAGE_KEY = 'ai-spec-breakdown'
-
-// Figma steps 01–05: Empty/spec ready → Loading → Suggested issues (draft) → Error → Publish success
-const STEP_LABELS = ['01', '02', '03', '04', '05']
-const PHASE_STEP = {
-  empty: 0,
-  specReady: 0,
-  loading: 1,
-  tasks: 2,
-  error: 3,
-  publishing: 4,
-  publishSuccess: 4,
-}
+import { useState } from 'react';
+import { calculate } from './api/apiClient';
+import './App.css';
 
 function App() {
-  const [phase, setPhase] = useState('empty')
-  const [specText, setSpecText] = useState('')
-  const [tasks, setTasks] = useState([])
-  const [approvedCount, setApprovedCount] = useState(0)
-  const [approvedIds, setApprovedIds] = useState(new Set())
-  const [error, setError] = useState(null)
-  const [publishCount, setPublishCount] = useState(null)
-  const [publishedProjectKey, setPublishedProjectKey] = useState('Project ABC')
-  const [uploadError, setUploadError] = useState(null)
-  const [simulateError, setSimulateError] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [editingDraft, setEditingDraft] = useState(null)
-  const [publishError, setPublishError] = useState(null) // { code?, message? } when publish fails
+  const [expression, setExpression] = useState('');
+  const [display, setDisplay] = useState('0');
+  const [isResult, setIsResult] = useState(false);
 
-  const handleFileOrPaste = useCallback(async (file) => {
-    const text = await readSpecFromFile(file || null)
-    setSpecText(text)
-    return text
-  }, [])
-
-  const startGeneration = useCallback(async (useErrorPath = false, specTextOverride = null) => {
-    const text = specTextOverride ?? (specText || (await handleFileOrPaste(null)))
-    if (!text) return
-    setSpecText(text)
-    setPhase('loading')
-    setError(null)
-    try {
-      const result = await generateIssues(text, { forceError: useErrorPath })
-      setTasks(result.issues.map((t) => ({ ...t, approved: false })))
-      setApprovedIds(new Set())
-      setApprovedCount(0)
-      setPhase('tasks')
-    } catch (e) {
-      setError({
-        code: e.code ?? 'AI_PROC_ERR_429',
-        timestamp: e.timestamp ?? new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
-        requestId: e.requestId ?? 'req_9f8a7b6c5d4e3f2a',
-      })
-      setPhase('error')
-    }
-  }, [specText, handleFileOrPaste])
-
-  const handleUploadClick = useCallback(async (e) => {
-    const file = e?.target?.files?.[0]
-    if (!file) return
-    setUploadError(null)
-    try {
-      const text = await readSpecFromFile(file)
-      setSpecText(text)
-      setPhase('specReady')
-      setSimulateError(false)
-    } catch (err) {
-      setUploadError(err.message || 'Failed to read file.')
-    }
-    e.target.value = ''
-  }, [])
-
-  const handleGenerate = useCallback(() => {
-    if (!specText) return
-    startGeneration(false, specText)
-  }, [specText, startGeneration])
-
-  const handleApprove = useCallback((id) => {
-    setApprovedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      setApprovedCount(next.size)
-      return next
-    })
-  }, [])
-
-  const handleUpdateTask = useCallback((id, updates) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              summary: updates.summary ?? t.summary,
-              description: updates.description ?? t.description,
-              acceptanceCriteria: Array.isArray(updates.acceptanceCriteria) ? updates.acceptanceCriteria : t.acceptanceCriteria,
-            }
-          : t
-      )
-    )
-    setEditingId(null)
-    setEditingDraft(null)
-  }, [])
-
-  const startEditing = useCallback((task) => {
-    setEditingId(task.id)
-    setEditingDraft({
-      summary: task.summary,
-      description: task.description,
-      acceptanceCriteria: [...(task.acceptanceCriteria || [])],
-    })
-  }, [])
-
-  const cancelEditing = useCallback(() => {
-    setEditingId(null)
-    setEditingDraft(null)
-  }, [])
-
-  const updateEditingDraft = useCallback((field, value) => {
-    setEditingDraft((prev) => (prev ? { ...prev, [field]: value } : null))
-  }, [])
-
-  const handlePublish = useCallback(async () => {
-    if (approvedIds.size < tasks.length) return
-    setPublishError(null)
-    setPhase('publishing')
-    try {
-      const published = tasks.filter((t) => approvedIds.has(t.id))
-      const { publishedCount: count, projectKey } = await publishIssues(published, { forceError: false })
-      setPublishCount(count)
-      setPublishedProjectKey(projectKey)
-      setPhase('publishSuccess')
-    } catch (e) {
-      setPhase('tasks')
-      setPublishError({
-        code: e.code ?? 'PUBLISH_ERR',
-        message: e.message ?? 'Publish failed. Please try again.',
-      })
-    }
-  }, [tasks, approvedIds])
-
-  // Restore persisted state on mount so issues persist across refresh/navigation
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const data = JSON.parse(raw)
-      if (data.specText) setSpecText(data.specText)
-      if (Array.isArray(data.tasks) && data.tasks.length > 0) {
-        setTasks(data.tasks)
-        if (Array.isArray(data.approvedIds)) {
-          const set = new Set(data.approvedIds)
-          setApprovedIds(set)
-          setApprovedCount(set.size)
-        }
-        setPhase('tasks')
+  const handleButtonClick = async (value) => {
+    if (value === '=') {
+      try {
+        const result = await calculate(expression);
+        setDisplay(result.result.toString());
+        setExpression(result.result.toString());
+        setIsResult(true);
+      } catch (error) {
+        setDisplay('Error');
+        setIsResult(true);
       }
-    } catch (_) {
-      // ignore invalid stored data
+    } else if (value === 'Clear') {
+      setExpression('');
+      setDisplay('0');
+      setIsResult(false);
+    } else if (value === 'Backspace') {
+      if (isResult) {
+        setExpression('');
+        setDisplay('0');
+        setIsResult(false);
+      } else {
+        setExpression(expression.slice(0, -1));
+        setDisplay(expression.slice(0, -1) || '0');
+      }
+    } else if (value === '+/-') {
+      if (isResult) {
+        const num = parseFloat(display);
+        setDisplay((-num).toString());
+        setExpression((-num).toString());
+      } else {
+        // Toggle sign of last number, but for simplicity, just prepend -
+        if (expression.startsWith('-')) {
+          setExpression(expression.slice(1));
+          setDisplay(expression.slice(1) || '0');
+        } else {
+          setExpression('-' + expression);
+          setDisplay('-' + expression);
+        }
+      }
+    } else {
+      if (isResult) {
+        setExpression(value);
+        setDisplay(value);
+        setIsResult(false);
+      } else {
+        setExpression(expression + value);
+        setDisplay(expression + value);
+      }
     }
-  }, [])
+  };
 
-  useEffect(() => {
-    if (phase !== 'tasks') return
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          specText,
-          tasks,
-          approvedIds: [...approvedIds],
-          phase: 'tasks',
-        })
-      )
-    } catch (_) {}
-  }, [phase, specText, tasks, approvedIds])
-
-  const retryPublish = useCallback(() => {
-    setPublishError(null)
-    handlePublish()
-  }, [handlePublish])
-
-  const resetToEmpty = useCallback(() => {
-    setPhase('empty')
-    setSpecText('')
-    setTasks([])
-    setError(null)
-    setPublishError(null)
-    setApprovedIds(new Set())
-    setApprovedCount(0)
-    setPublishCount(null)
-    setEditingId(null)
-    try {
-      localStorage.removeItem(STORAGE_KEY)
-    } catch (_) {}
-  }, [])
-
-  const currentStep = PHASE_STEP[phase] ?? 0
-
-  const statusMessage =
-    phase === 'loading' && 'Analyzing specification. Please wait.'
-    || phase === 'error' && 'Generation failed. You can retry.'
-    || phase === 'publishing' && 'Publishing issues. Please wait.'
-    || phase === 'publishSuccess' && `Successfully published ${publishCount ?? tasks.length} issues.`
-    || publishError && 'Publish failed. You can retry.'
-    || ''
+  const buttons = [
+    '7', '8', '9', '÷',
+    '4', '5', '6', 'x',
+    '1', '2', '3', '-',
+    '0', '.', '=', '+',
+    'Clear', '+/-', 'Backspace', '%'
+  ];
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="app-header-top">
-          <h1 className="app-title">AI Specification Breakdown</h1>
-          <p className="app-subtitle">Transform technical specifications into actionable Jira issues with AI.</p>
-        </div>
-        <div className="stepper" role="progressbar" aria-valuenow={currentStep + 1} aria-valuemin={1} aria-valuemax={5} aria-label="Workflow step">
-          {STEP_LABELS.map((label, i) => (
-            <div
-              key={label}
-              className={`stepper-step ${i === currentStep ? 'stepper-step--active' : ''} ${i < currentStep ? 'stepper-step--done' : ''}`}
-            >
-              <span className="stepper-step-num">{label}</span>
-            </div>
-          ))}
-        </div>
-      </header>
-
-      <div
-        className="visually-hidden"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {statusMessage}
+    <div className="calculator">
+      <div className="display">
+        {display}
       </div>
+      <div className="buttons">
+        {buttons.map((btn) => (
+          <button key={btn} onClick={() => handleButtonClick(btn)}>
+            {btn}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      <main className="app-main">
-        <section className="panel panel-spec" aria-label="Specification">
-          {phase === 'empty' ? (
-            <>
-              <h2 className="panel-title">Upload Specification</h2>
-              <div
-                className="upload-zone"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const f = e.dataTransfer?.files?.[0]
-                  if (!f) return
-                  setUploadError(null)
-                  readSpecFromFile(f)
-                    .then((text) => {
-                      setSpecText(text)
-                      setPhase('specReady')
-                    })
-                    .catch((err) => setUploadError(err.message || 'Failed to read file.'))
-                }}
-              >
-                <div className="upload-zone-icon" aria-hidden="true" />
-                <p className="upload-zone-text">Upload a specification document</p>
-                <p className="upload-zone-hint">Upload a .txt or .md file to generate structured Jira issues</p>
-                {uploadError && (
-                  <p className="upload-zone-error" role="alert">{uploadError}</p>
-                )}
-                <label htmlFor="spec-file-upload" className="btn btn-primary upload-btn">
-                  <span className="btn-icon upload-icon" aria-hidden="true" />
-                  Upload Specification
-                  <input
-                    id="spec-file-upload"
-                    type="file"
-                    accept=".txt,.md"
-                    className="upload-input"
-                    onChange={handleUploadClick}
-                    aria-describedby="upload-hint"
-                  />
-                </label>
-                <span id="upload-hint" className="visually-hidden">
-                  Choose a .txt or .md specification file
-                </span>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="panel-title">Uploaded Specification</h2>
-              <div className="spec-content" aria-label="Specification content">
-                <pre className="spec-text">{specText}</pre>
-              </div>
-              <div className="panel-actions">
-                {phase !== 'specReady' && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={phase === 'loading' || phase === 'publishing'}
-                  onClick={() => startGeneration(false)}
-                  aria-label="Regenerate tasks from specification"
-                >
-                  <span className="btn-icon refresh-icon" aria-hidden="true" />
-                  Regenerate Tasks
-                </button>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={resetToEmpty}
-                  aria-label="Upload a new specification file"
-                >
-                  <span className="btn-icon upload-icon" aria-hidden="true" />
-                  Upload New Spec
-                </button>
-              </div>
-            </>
-          )}
-        </section>
-
-        <section className="panel panel-issues" aria-label="Suggested Jira Issues">
-          {phase === 'empty' && (
-            <>
-              <h2 className="panel-title panel-title-issues">Suggested Jira Issues</h2>
-              <div className="empty-state">
-                <div className="empty-state-icon" aria-hidden="true" />
-                <p className="empty-state-title">No tasks generated yet</p>
-                <p className="empty-state-hint">Upload a document and let AI break it into Jira-ready issues.</p>
-              </div>
-            </>
-          )}
-
-          {phase === 'specReady' && (
-            <>
-              <h2 className="panel-title panel-title-issues">Suggested Jira Issues</h2>
-              <div className="empty-state empty-state--with-generate">
-                <div className="empty-state-icon" aria-hidden="true" />
-                <p className="empty-state-title">No tasks generated yet</p>
-                <p className="empty-state-hint">Click Generate to break your specification into Jira-ready issues.</p>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-generate"
-                  onClick={handleGenerate}
-                  aria-label="Generate Jira issues from specification"
-                >
-                  <span className="btn-icon refresh-icon" aria-hidden="true" />
-                  Generate
-                </button>
-              </div>
-            </>
-          )}
-
-          {phase === 'loading' && (
-            <>
-              <h2 className="panel-title panel-title-issues">Suggested Jira Issues</h2>
-              <div className="loading-bar" aria-hidden="true" />
-              <div className="loading-state">
-                <div className="loading-spinner" aria-hidden="true" />
-                <p className="loading-title">Analyzing Specification...</p>
-                <p className="loading-hint">Breaking your document into structured Jira issues.</p>
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => startGeneration(true, specText)}
-                  aria-label="Simulate error path for testing"
-                >
-                  Simulate error path
-                </button>
-              </div>
-              <div className="skeleton-list">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="skeleton-card" aria-hidden="true" />
-                ))}
-              </div>
-            </>
-          )}
-
-          {phase === 'error' && (
-            <>
-              <h2 className="panel-title panel-title-issues">Suggested Jira Issues</h2>
-              <div className="error-state">
-                <div className="error-icon" aria-hidden="true" />
-                <h3 className="error-title">Generation Failed</h3>
-                <div className="error-message" role="alert">
+export default App;
                   We encountered an error while processing your specification. This could be due to formatting issues, API limits, or temporary service disruption.
                 </div>
                 <dl className="error-details">
