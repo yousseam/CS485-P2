@@ -1,12 +1,111 @@
-name: Run integration tests
+name: Run Integration Tests
 
 on:
   push:
+    branches:
+      - main
+      - 'p6/**'
   pull_request:
+    branches:
+      - main
+      - 'p6/**'
 
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install root devDependencies (cross-env)
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Set up database environment
+        working-directory: ./backend
+        run: |
+          echo "DB_HOST=localhost" >> .env.test
+          echo "DB_PORT=5432" >> .env.test
+          echo "DB_NAME=test_db" >> .env.test
+          echo "DB_USER=test_user" >> .env.test
+          echo "DB_PASSWORD=test_password" >> .env.test
+          echo "NODE_ENV=test" >> .env.test
+
+      - name: Run backend integration tests (database models)
+        working-directory: ./backend
+        run: node --test tests/integration.test.js
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: test_db
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          NODE_ENV: test
+
+      - name: Start backend server for API tests
+        working-directory: ./backend
+        run: |
+          npm run dev &
+          sleep 15
+        env:
+          PORT: 3001
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: test_db
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+
+      - name: Run HTTP integration tests against local API
+        env:
+          INTEGRATION_API_BASE_URL: http://localhost:3001/api
+          INTEGRATION_TARGET: local
+        run: npm run test:integration
+
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Run frontend US2 tests
+        working-directory: ./frontend
+        run: npm run test:frontend-us2
+
+  integration-tests-cloud:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Check out repository
@@ -20,13 +119,20 @@ jobs:
       - name: Install root devDependencies (cross-env)
         run: npm ci
 
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Set environment for cloud tests
+        run: |
+          if [ -z "${{ vars.INTEGRATION_API_BASE_URL }}" ]; then
+            echo "Warning: INTEGRATION_API_BASE_URL not set, skipping cloud tests"
+            echo "Set this variable in GitHub repo Settings → Secrets and variables → Actions → Variables"
+            exit 0
+          fi
+
       - name: Run HTTP integration tests against deployed API
         env:
-          # Override in GitHub repo Settings → Secrets and variables → Actions → Variables
           INTEGRATION_API_BASE_URL: ${{ vars.INTEGRATION_API_BASE_URL }}
           INTEGRATION_TARGET: cloud
-        run: |
-          if [ -z "$INTEGRATION_API_BASE_URL" ]; then
-            export INTEGRATION_API_BASE_URL='https://7j3debwhz5.execute-api.us-east-2.amazonaws.com/prod/api'
-          fi
-          npm run test:integration
+        run: npm run test:integration
