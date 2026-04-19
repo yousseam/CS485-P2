@@ -1,0 +1,39 @@
+name: Run Backend Tests
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/run-backend-tests.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/run-backend-tests.yml'
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run backend Jest tests
+        run: npm run test:jest
+
+      - name: Run backend coverage
+        run: npm run test:coverage

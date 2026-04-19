@@ -396,7 +396,7 @@ router.post('/batches/:batchId/publish', authenticate, asyncHandler(async (req, 
         const jiraIssue = publishResult.issues[i];
         const task = approvedTasks[i];
         if (task && jiraIssue.jiraId) {
-          await GeneratedTask.update(
+          await task.update(
             {
               jira_issue_id: jiraIssue.jiraId,
               jira_issue_key: jiraIssue.key
