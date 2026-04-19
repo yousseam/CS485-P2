@@ -25,6 +25,8 @@ CS485-P2/
 │   │   ├── services/  # Business logic
 │   │   └── middleware/ # Error handling, logging
 │   └── tests/         # Backend tests
+├── integration-tests/ # P6: HTTP integration tests (frontend ↔ backend contract)
+├── package.json       # Root scripts: npm run test:integration*
 └── docs/              # Documentation
 ```
 
@@ -112,6 +114,41 @@ npm run dev
 ```
 
 Open `http://localhost:5173` in your browser.
+
+### 4. Integration tests (P6 — frontend ↔ backend)
+
+**Specification:** [docs/test-specification-frontend-backend-integration.md](docs/test-specification-frontend-backend-integration.md)
+
+From the **repository root**, install root devDependencies once (`cross-env` for Windows-friendly env vars):
+
+```bash
+npm install
+```
+
+**Local:** start the backend first (`cd backend && npm start` or `npm run dev`), then:
+
+```bash
+npm run test:integration:local
+```
+
+**Cloud (API Gateway only, no local backend):**
+
+```bash
+npm run test:integration:cloud
+```
+
+Override the API base URL if your team deploys elsewhere:
+
+```bash
+# PowerShell
+$env:INTEGRATION_API_BASE_URL="https://YOUR_ID.execute-api.REGION.amazonaws.com/prod/api"
+$env:INTEGRATION_TARGET="cloud"
+npm run test:integration
+```
+
+**CORS note:** These tests use **Node `fetch`**, so they do **not** reproduce browser CORS. After API Gateway CORS is fixed for Amplify, enable optional preflight checks with `RUN_CLOUD_PREFLIGHT_TESTS=true` (see spec doc § Post-CORS). True browser E2E is a future Playwright step.
+
+**CI:** `.github/workflows/run-integration-tests.yml` runs the suite against the deployed API on every push/PR.
 
 **Option B: Frontend only (mock API)**
 

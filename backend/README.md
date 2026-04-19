@@ -402,6 +402,21 @@ Health check endpoint.
 
 ### Database Setup
 
+**Port 5432 already in use?** This repo’s `docker-compose.yml` publishes Postgres on **host port 5433** (`5433:5432`). When connecting from **Node on your machine** to that container, set `DB_HOST=localhost` and **`DB_PORT=5433`** in `backend/.env`.
+
+**Still “password authentication failed”?**
+
+1. Confirm what Node is using: `cd backend && npm run verify:db` (prints host/port; tries `ssl: false`). If **`port` is still `5432`** but `.env` says `5433`, Windows may have **`DB_PORT` set globally** (User/System environment variables). `dotenv` used to not override those; this repo now uses **`override: true`** so `backend/.env` wins—pull latest or remove the conflicting system variable.
+2. **Stale Docker volume:** `POSTGRES_PASSWORD` is only applied on **first** database init. If the named volume already existed from an older run, the password may not be `postgres`. From repo root:
+   ```bash
+   docker compose down
+   docker volume rm cs485-p2_postgres_data
+   docker compose up postgres -d
+   ```
+   Then ensure `backend/.env` has `DB_PASSWORD=postgres` and wait until the container is **healthy**.
+
+### Native PostgreSQL (no Docker)
+
 1. Create a PostgreSQL database:
 ```bash
 createdb ai_spec_breakdown
@@ -421,7 +436,7 @@ npm install
 
 ### Configure Environment
 
-Copy `.env.example` to `.env` and configure:
+Copy `.env.example` to **`backend/.env`** (recommended). You can also keep shared vars in **repo root `.env`** (next to `docker-compose.yml`); `load-env.mjs` loads **root first**, then **`backend/.env`** (backend wins on duplicate keys).
 
 ```bash
 cp .env.example .env

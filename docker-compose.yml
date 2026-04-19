@@ -1,4 +1,5 @@
-version: '3.8'
+# Host port 5433 avoids clashing with another Postgres on 5432 (e.g. another project).
+# From the host: DB_HOST=localhost, DB_PORT=5433. Inside Compose, backend→postgres still uses 5432.
 
 services:
   postgres:
@@ -11,7 +12,7 @@ services:
       POSTGRES_DB: ai_spec_breakdown
       POSTGRES_INITDB_ARGS: "-E UTF-8"
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
