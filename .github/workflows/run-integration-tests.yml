@@ -1,0 +1,32 @@
+name: Run integration tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install root devDependencies (cross-env)
+        run: npm ci
+
+      - name: Run HTTP integration tests against deployed API
+        env:
+          # Override in GitHub repo Settings → Secrets and variables → Actions → Variables
+          INTEGRATION_API_BASE_URL: ${{ vars.INTEGRATION_API_BASE_URL }}
+          INTEGRATION_TARGET: cloud
+        run: |
+          if [ -z "$INTEGRATION_API_BASE_URL" ]; then
+            export INTEGRATION_API_BASE_URL='https://7j3debwhz5.execute-api.us-east-2.amazonaws.com/prod/api'
+          fi
+          npm run test:integration

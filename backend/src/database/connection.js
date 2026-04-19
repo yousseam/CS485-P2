@@ -4,10 +4,8 @@
  * Supports up to 10 concurrent users
  */
 
+import '../../load-env.mjs';
 import pg from 'pg';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const { Pool } = pg;
 
@@ -15,7 +13,7 @@ const { Pool } = pg;
 // Supports 10 simultaneous frontend users
 const poolConfig = {
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
+  port: parseInt(process.env.DB_PORT || '5432', 10),
   database: process.env.DB_NAME || 'ai_spec_breakdown',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
@@ -26,10 +24,13 @@ const poolConfig = {
   idleTimeoutMillis: 30000, // Close idle connections after 30s
   connectionTimeoutMillis: 10000, // Give up connecting after 10s
 
-  // SSL configuration (required for production/AWS RDS)
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: false }
-    : false,
+  // SSL: use for remote RDS in production. Local Docker Postgres has no TLS — SSL here can break localhost.
+  ssl:
+    process.env.NODE_ENV === 'production' &&
+    process.env.DB_SSL !== 'false' &&
+    !['localhost', '127.0.0.1'].includes((process.env.DB_HOST || '').trim())
+      ? { rejectUnauthorized: false }
+      : false,
 
   // Logging
   log: process.env.NODE_ENV === 'development'

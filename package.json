@@ -1,0 +1,14 @@
+{
+  "name": "cs485-p2",
+  "private": true,
+  "type": "module",
+  "description": "Root scripts for cross-package integration tests (P6 item 5)",
+  "scripts": {
+    "test:integration": "node --test integration-tests/api.integration.test.mjs integration-tests/deployed-browser-placeholder.test.mjs",
+    "test:integration:local": "cross-env INTEGRATION_API_BASE_URL=http://localhost:3001/api INTEGRATION_TARGET=local npm run test:integration",
+    "test:integration:cloud": "cross-env INTEGRATION_API_BASE_URL=https://7j3debwhz5.execute-api.us-east-2.amazonaws.com/prod/api INTEGRATION_TARGET=cloud npm run test:integration"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.1"
+  }
+}

@@ -1,13 +1,13 @@
+import './load-env.mjs';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-// Load environment variables
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Import routes
 import { generateIssuesRouter } from './src/routes/generateIssues.js';
@@ -25,9 +25,6 @@ import { generateRequestId } from './src/middleware/errorHandler.js';
 
 // Import database
 import { testConnection, closePool } from './src/database/connection.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;

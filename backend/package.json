@@ -5,14 +5,15 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "test": "node --test",
-    "test:watch": "node --test --watch",
-    "test:jest": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
-    "test:jest:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",
-    "test:coverage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage"
-  },
+  "start": "node server.js",
+  "dev": "node --watch server.js",
+  "test": "node --test",
+  "test:watch": "node --test --watch",
+  "verify:db": "node scripts/verify-db.mjs",
+  "test:jest": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
+  "test:jest:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch",
+  "test:coverage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage"
+},
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "compression": "^1.7.4",
