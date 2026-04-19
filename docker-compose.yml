@@ -31,10 +31,10 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    # Don't load backend/.env - use environment variables from this file instead
+    # backend/.env uses DB_HOST=localhost which doesn't work in Docker
     env_file:
       - .env
-      - path: backend/.env
-        required: false
     environment:
       - NODE_ENV=development
       - PORT=3001
@@ -53,9 +53,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     networks:
       - ai-spec-network
     healthcheck:

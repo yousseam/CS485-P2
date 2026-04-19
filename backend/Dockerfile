@@ -10,18 +10,18 @@ WORKDIR /app
 # Stage 2: Copy package files
 COPY package*.json ./
 
-# Stage 3: Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Stage 3: Install dependencies (use npm install instead of ci)
+RUN npm install && npm cache clean --force
 
 # Stage 4: Copy application code
 COPY src/ ./src/
 COPY server.js ./server.js
+COPY load-env.mjs ./load-env.mjs
 
-# Create non-root user for security
+# Create non-root user for security (but keep correct permissions)
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -u 1001 -G nodejs nodejs && \
-    chown -R nodejs:nodejs /app && \
-    chmod g+w /app
+    chown -R nodejs:nodejs /app
 
 # Switch to non-root user
 USER nodejs

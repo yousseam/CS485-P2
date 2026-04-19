@@ -41,51 +41,88 @@ CS485-P2/
 
 ### Prerequisites
 
-- Node.js 18 or higher
+- Docker and Docker Compose
+- Node.js 18 or higher (for local development/testing)
 - npm
 
-### 1. Install Dependencies (Optional AI Setup)
+### 1. Start the Application with Docker (Recommended)
+
+The application is configured to run with Docker Compose, which includes:
+- PostgreSQL database
+- Backend API server
+- Automatic database initialization
 
 ```bash
-# Install backend dependencies
-cd backend
-npm install
+# Start all services
+docker-compose up -d
 
+# View logs
+docker-compose logs -f
 
-# Optional: Configure AI
-
-```bash
-
-cd backend
-
-cp .env.example .env
-
-# Add your API key to .env:
-
-# OPENAI_API_KEY=sk-your-openai-api-key-here
-
-# ANTHROPIC_API_KEY=your-anthropic-api-key-here
-
+# Stop all services
+docker-compose down
 ```
 
+The application will be available at:
+- **Frontend**: http://localhost:5173 (run separately, see below)
+- **Backend API**: http://localhost:3001
+- **PostgreSQL**: localhost:5433
 
+### 2. Start the Frontend
+
+The frontend runs separately (not in Docker) for development:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
+
+### 3. Configure AI (Optional)
+
+To enable real AI processing, set up your API keys:
+
+```bash
+# Copy the example environment file
+cp backend/.env.example backend/.env
+
+# Add your API keys to backend/.env:
+# OPENAI_API_KEY=sk-your-openai-api-key-here
+# ANTHROPIC_API_KEY=your-anthropic-api-key-here
+# GEMINI_API_KEY=your-gemini-api-key-here
+```
 
 For detailed AI setup, see [backend/docs/ai-integration.md](backend/docs/ai-integration.md)
 
+## Alternative: Manual Setup (Without Docker)
 
-/
-# Install frontend dependencies
+If you prefer not to use Docker, you can run the application manually:
+
+### 1. Install Dependencies
+
+```bash
+# Backend
+cd backend
+npm install
+
+# Frontend
 cd ../frontend
 npm install
 ```
 
-### 2. Configure Environment
+### 2. Set up PostgreSQL manually
+
+Install PostgreSQL locally and create the database, then run the schema initialization script from `backend/src/database/schema.sql`.
+
+### 3. Configure Environment
 
 **Backend** (`backend/.env`):
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env with your database configuration
 ```
 
 **Frontend** (`frontend/.env.development`):
@@ -97,9 +134,7 @@ cp .env.development .env.development.local
 # VITE_USE_MOCK=true   # Use mock API
 ```
 
-### 3. Run the Application
-
-**Option A: Run both services (recommended)**
+### 4. Run the Application
 
 Terminal 1 - Backend:
 ```bash
@@ -112,8 +147,6 @@ Terminal 2 - Frontend:
 cd frontend
 npm run dev
 ```
-
-Open `http://localhost:5173` in your browser.
 
 ### 4. Integration tests (P6 — frontend ↔ backend)
 
@@ -205,7 +238,20 @@ node --test tests/apiClient.test.js
 
 ### Integration Tests
 
-Integration tests require both services running:
+**With Docker (recommended):**
+
+```bash
+# Start Docker services (backend + database)
+docker-compose up -d
+
+# Wait for services to be healthy (check with: docker-compose ps)
+docker-compose logs -f backend
+
+# Run integration tests
+npm run test:integration:local
+```
+
+**Without Docker:**
 
 ```bash
 # Terminal 1: Start backend
@@ -213,7 +259,7 @@ cd backend
 npm run dev
 
 # Terminal 2: Run integration tests
-npm test
+npm run test:integration:local
 ```
 
 ## 🎯 Features
@@ -289,6 +335,28 @@ Figma mockup screenshots live in `/mockups` (desktop and mobile variants). See `
 
 ## 🔧 Development
 
+### Docker Workflow (Recommended)
+
+For day-to-day development, use Docker Compose:
+
+```bash
+# Start backend and database
+docker-compose up -d
+
+# The backend automatically reloads on code changes
+# (due to volume mount in docker-compose.yml)
+
+# Start frontend separately
+cd frontend
+npm run dev
+
+# Make changes to backend code - Docker will pick them up
+# Make changes to frontend code - Vite will hot reload
+
+# When done, stop Docker
+docker-compose down
+```
+
 ### Adding New Features
 
 1. **Backend**: Add services in `backend/src/services/`
@@ -296,6 +364,10 @@ Figma mockup screenshots live in `/mockups` (desktop and mobile variants). See `
 3. **Frontend**: Update `frontend/src/api/apiClient.js`
 4. **UI**: Update `frontend/src/App.jsx`
 5. **Tests**: Add corresponding tests
+6. **Docker changes**: Rebuild containers after major changes:
+   ```bash
+   docker-compose up -d --build
+   ```
 
 ### Environment Variables
 
@@ -312,21 +384,64 @@ Figma mockup screenshots live in `/mockups` (desktop and mobile variants). See `
 
 ## 🚢 Deployment
 
-### Backend
+### Docker Deployment (Recommended)
 
+The application uses Docker for consistent deployment across environments:
+
+```bash
+# Build and start all services
+docker-compose up -d
+
+# Rebuild services after code changes
+docker-compose up -d --build
+
+# View service logs
+docker-compose logs -f backend
+
+# Stop all services
+docker-compose down
+
+# Remove volumes (cleans database)
+docker-compose down -v
+```
+
+### Docker Services
+
+- **PostgreSQL**: Database with automatic schema initialization
+- **Backend API**: Express.js server with health checks
+- **Frontend**: Run separately (not containerized for development)
+
+### Production Deployment
+
+For production deployment, you can:
+
+1. **Use AWS Lambda + API Gateway** (P6 - Project 6):
+   - Backend is deployed as serverless functions
+   - Frontend is hosted on AWS Amplify
+   - Automated via GitHub Actions
+
+2. **Docker-based deployment**:
+   - Use the existing Docker Compose setup
+   - Deploy to Docker Swarm, Kubernetes, or cloud hosting
+   - Requires environment configuration for production
+
+### Manual Deployment (Legacy)
+
+If you prefer manual deployment without Docker:
+
+**Backend**:
 ```bash
 cd backend
 npm install --production
 npm start
 ```
 
-### Frontend
-
+**Frontend**:
 ```bash
 cd frontend
 npm install
 npm run build
-# Deploy the dist/ folder
+# Deploy the dist/ folder to your web server
 ```
 
 ## 📄 License
@@ -339,4 +454,44 @@ CS485 Project 2 Team
 
 ## Deployment Notes
 
-Current deployment uses Docker for startup, but does not yet include CI/CD, staging environments, or automated deployment checks.
+The application is designed to run with Docker Compose for development and production environments. The setup includes:
+
+- **PostgreSQL database** with automatic schema initialization
+- **Backend API** with health checks and automatic restarts
+- **Frontend** runs separately for development (can be containerized for production)
+
+### Current Status
+
+✅ **Docker setup**: Complete and production-ready
+✅ **Database**: PostgreSQL with automatic initialization
+✅ **Health checks**: Backend API health monitoring
+✅ **Volume management**: Persistent data storage
+🔄 **CI/CD**: GitHub Actions configured (P6)
+🔄 **AWS Deployment**: Lambda + API Gateway + Amplify (P6)
+
+### For Production
+
+1. Use Docker Compose for local development
+2. Deploy backend to AWS Lambda + API Gateway
+3. Deploy frontend to AWS Amplify
+4. Enable GitHub Actions for automated deployment
+5. Configure proper environment variables and secrets
+
+### Troubleshooting
+
+```bash
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Restart services
+docker-compose restart
+
+# Rebuild after code changes
+docker-compose up -d --build
+
+# Clean everything (warning: deletes database data)
+docker-compose down -v
+```
