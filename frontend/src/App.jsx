@@ -35,7 +35,6 @@ function App() {
   const [publishCount, setPublishCount] = useState(null)
   const [publishedProjectKey, setPublishedProjectKey] = useState('Project ABC')
   const [uploadError, setUploadError] = useState(null)
-  const [simulateError, setSimulateError] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editingDraft, setEditingDraft] = useState(null)
   const [publishError, setPublishError] = useState(null) // { code?, message? } when publish fails
@@ -77,7 +76,6 @@ function App() {
       const text = await readSpecFromFile(file)
       setSpecText(text)
       setPhase('specReady')
-      setSimulateError(false)
     } catch (err) {
       setUploadError(err.message || 'Failed to read file.')
     }
@@ -146,17 +144,25 @@ function App() {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return
       const data = JSON.parse(raw)
-      if (data.specText) setSpecText(data.specText)
+      // Restore state in a single batch update to avoid cascading renders
+      const updates = {}
+      if (data.specText) updates.specText = data.specText
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
-        setTasks(data.tasks)
+        updates.tasks = data.tasks
+        updates.phase = 'tasks'
         if (Array.isArray(data.approvedIds)) {
-          const next = approvedIdsFromSerialized(data.approvedIds)
-          setApprovedIds(next)
-          setApprovedCount(next.size)
+          updates.approvedIds = approvedIdsFromSerialized(data.approvedIds)
+          updates.approvedCount = updates.approvedIds.size
         }
-        setPhase('tasks')
       }
-    } catch (_) {
+      // Apply all updates
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (updates.specText) setSpecText(updates.specText)
+      if (updates.tasks) setTasks(updates.tasks)
+      if (updates.approvedIds) setApprovedIds(updates.approvedIds)
+      if (updates.approvedCount) setApprovedCount(updates.approvedCount)
+      if (updates.phase) setPhase(updates.phase)
+    } catch {
       // ignore invalid stored data
     }
   }, [])
@@ -173,7 +179,9 @@ function App() {
           phase: 'tasks',
         })
       )
-    } catch (_) {}
+    } catch {
+      // ignore storage errors
+    }
   }, [phase, specText, tasks, approvedIds])
 
   const retryPublish = useCallback(() => {
@@ -194,7 +202,9 @@ function App() {
     setEditingId(null)
     try {
       localStorage.removeItem(STORAGE_KEY)
-    } catch (_) {}
+    } catch {
+      // ignore storage errors
+    }
   }, [])
 
   const currentStep = PHASE_STEP[phase] ?? 0

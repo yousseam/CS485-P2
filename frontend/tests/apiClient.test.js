@@ -4,11 +4,11 @@
  * Run with: node --test tests/apiClient.test.js
  */
 
-import { describe, it, before, after, mock } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
 // Mock fetch globally for testing
-global.fetch = async (url, options) => {
+global.fetch = async (url) => {
   const mockResponses = {
     'http://localhost:3001/api/generate-issues': {
       status: 200,
