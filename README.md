@@ -495,3 +495,49 @@ docker-compose up -d --build
 # Clean everything (warning: deletes database data)
 docker-compose down -v
 ```
+## 🌐 For Web Users
+
+To use the deployed application, simply visit:
+
+**Frontend:** https://main.d13rhlu7k6exeo.amplifyapp.com/
+
+1. Upload a `.txt` or `.md` specification file
+2. Click **Generate** to generate Jira issues using AI
+3. Review, edit, approve or reject the generated issues
+4. Click **Publish** to publish the approved issues to Jira
+
+No installation or setup required.
+
+---
+
+## ☁️ For Developers Forking This Repo — AWS Deployment Setup
+
+### Prerequisites
+- AWS account (free tier is sufficient)
+- GitHub account with access to the forked repo
+- AWS CLI installed and configured on your machine
+
+### 1. Set Up AWS Lambda
+- Go to AWS Console → Lambda → Create function
+- Name it `MyAppBackend`, runtime Node.js 20, region `us-east-2`
+- Upload the backend code as a zip file
+
+### 2. Set Up AWS API Gateway
+- Go to AWS Console → API Gateway → Create REST API
+- Connect it to your Lambda function
+- Deploy the API to a stage called `prod`
+
+### 3. Set Up AWS Amplify
+- Go to AWS Console → Amplify → New app
+- Connect it to your GitHub repo's `main` branch
+- Amplify will automatically build and deploy the frontend
+
+### 4. Add GitHub Secrets
+In your forked repo go to **Settings → Secrets and variables → Actions** and add:
+- `AWS_ACCESS_KEY_ID` — your AWS access key ID
+- `AWS_SECRET_ACCESS_KEY` — your AWS secret access key
+
+### 5. Automated Deployment
+Once secrets are added, every push to `main` will automatically:
+- Deploy backend code to Lambda via `deploy-aws-lambda.yml`
+- Redeploy frontend to Amplify via `deploy-aws-amplify.yml`
